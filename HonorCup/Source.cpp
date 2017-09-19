@@ -2,11 +2,11 @@
 #include <vector>
 #include <complex>
 #include <random>
-#include <gsl/gsl_integration.h>
 #include <numeric>
 #include <algorithm>
 #include <ctime>
 #include <functional>
+#include <signal.h>
 
 const double TARGET_CAPACITY = 3.6;
 const unsigned NUM_OF_ITERATIONS = 10000;
@@ -17,9 +17,17 @@ const double TARGET_SNR = 12;
 const double TARGET_SIGMA = sqrt(1. / (2 * pow(10., TARGET_SNR / 10)));
 
 const double SCALING_FACTOR = 3;
+const double CAPACITY_SEED = 123456487;
 
 using namespace std;
+auto gen = mt19937_64(time(nullptr));
 
+vector<double> noiseTable(NUM_OF_ITERATIONS * 2);
+vector<unsigned> uniformTable(NUM_OF_ITERATIONS);
+normal_distribution<double> noiseD(0., TARGET_SIGMA);
+uniform_int_distribution<int> distr(0., CONSTELLATION_SIZE - 1);
+uniform_real_distribution<double> distrR;
+double probs[16];
 
 vector<complex<double> > qam16 =
 { { -3, -3 },{ -3, -1 },
@@ -57,35 +65,33 @@ double avgPower(const vector<complex<double> >& Constellation)
 	return res;
 }
 
-uniform_real_distribution<double> distr;
-auto gen = mt19937_64(time(nullptr));
 uniform_real_distribution<double> mutation;
 normal_distribution<double> constNoise(0., 0.02);
 normal_distribution<double> mutationNoise(0., 0.5);
 
 double CapacityApprox(const vector<complex<double> >& Constellation, double Sigma, unsigned NumOfIterations)
 {
-	uniform_int_distribution<int> distr(0., Constellation.size() - 1);
-	normal_distribution<double> noiseD(0., Sigma);
-	vector<double> probs(Constellation.size());
-
 	double globalSum = 0;
+	double N0 = 2 * Sigma * Sigma;
 
-	for(unsigned i = 0; i < NumOfIterations; ++i)
+	for (unsigned i = 0; i < NumOfIterations; ++i)
 	{
-		int elem = distr(gen);
-		complex<double> noise = { noiseD(gen),  noiseD(gen) };
+		int elem = uniformTable[i];
+		complex<double> noise = { noiseTable[i << 1],  noiseTable[(i << 1) + 1] };
 		complex<double> transmitted = Constellation[elem] + noise;
 
-
 		double sum = 0;
+		double an = abs(noise);
+		an *= an;
 
-		for(unsigned j = 0; j < Constellation.size(); ++j)
+		for (unsigned j = 0; j < CONSTELLATION_SIZE; ++j)
 		{
-			probs[j] = exp(-(pow(abs(transmitted - Constellation[j]), 2) - pow(abs(noise), 2)) / (2 * Sigma * Sigma));
+			double c = abs(transmitted - Constellation[j]);
+			c *= c;
+			probs[j] = exp((an - c) / N0);
 			sum += probs[j];
 		}
-		for (unsigned j = 0; j < Constellation.size(); ++j)
+		for (unsigned j = 0; j < CONSTELLATION_SIZE; ++j)
 			probs[j] /= sum;
 
 		double mutualInf = 0.;
@@ -124,10 +130,10 @@ double FindSNR(const vector<complex<double> >& Constellation)
 void Normalize(vector<complex<double> >& Constellation)
 {
 	double P = avgPower(Constellation);
+	double sP = sqrt(P);
 	for (auto&& elem : Constellation)
 	{
-		elem.real(elem.real() / sqrt(P));
-		elem.imag(elem.imag() / sqrt(P));
+		elem /= sP;
 	}
 }
 
@@ -136,12 +142,11 @@ vector<complex<double> > GenerateRandomConstellation(unsigned ConstellationSize)
 {
 	vector<complex<double> > res(ConstellationSize);
 
-	for(auto&& elem : res)
-		elem = { (distr(gen) - 0.5) * SCALING_FACTOR,  (distr(gen) - 0.5) * SCALING_FACTOR };
+	for (auto&& elem : res)
+		elem = { (distrR(gen) - 0.5) * SCALING_FACTOR,  (distrR(gen) - 0.5) * SCALING_FACTOR };
 	Normalize(res);
 	return res;
 }
-
 
 vector<complex<double> > GenerateNoisyConstellation(unsigned ConstellationSize, unsigned Ind)
 {
@@ -170,10 +175,6 @@ void handler(int sig)
 {
 	F = false;
 }
-
-#include <signal.h>
-
-
 
 vector<complex<double> > ReconstructConstellation(const vector<complex<double> >& Constellation)
 {
@@ -281,21 +282,26 @@ int main(int argc, char** argv)
 	float CR = stof(argv[2]);
 	float F = stof(argv[3]);
 	string mode = argv[4];
-	//for (auto&& elem : opt16)
-	//{
-	//	cout << elem.real() << ' ' << elem.imag() << ' ';//endl;
-	//}
-	
-	//cout << findSNR(qam16) << ' ' << findSNR(opt16);
+
+	gen.seed(CAPACITY_SEED);
+	for (unsigned i = 0; i < 2 * NUM_OF_ITERATIONS; ++i) {
+		noiseTable[i] = noiseD(gen);
+	}
+	for (unsigned i = 0; i < NUM_OF_ITERATIONS; ++i) {
+		uniformTable[i] = distr(gen);
+	}
+	unsigned seed = time(nullptr);
+	gen.seed(seed);
 
 	cout << "QAM16: " << CapacityApprox(qam16, TARGET_SIGMA, NUM_OF_ITERATIONS)
 		<< ", OptimalConstellation: " << CapacityApprox(opt16, TARGET_SIGMA, NUM_OF_ITERATIONS) << endl;
 	auto&& BestConstellation = DEConstellationSearch(CONSTELLATION_SIZE, mode == "best",
 		population, CR, F, 10000);
 
-	cout << CapacityApprox(BestConstellation, TARGET_SIGMA, NUM_OF_ITERATIONS);
+	double bestCapacity = CapacityApprox(BestConstellation, TARGET_SIGMA, NUM_OF_ITERATIONS);
+	cout << bestCapacity;
 
-	ofstream out("res" + to_string(CR) + "_" + to_string(F) + "_" + mode + ".txt");
+	ofstream out("res_" + to_string(seed) + "_" + to_string(population) + "_" + to_string(CR) + "_" + to_string(F) + "_" + mode + "_" + to_string(bestCapacity) + ".txt");
 	for (auto&& elem : BestConstellation)
 		out << elem.real() << ' ' << elem.imag() << ' ';//endl;
 
