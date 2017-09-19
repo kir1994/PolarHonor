@@ -39,6 +39,24 @@ vector<complex<double> > qam16 =
 { 3, -3 },{ 3, -1 },
 { 3, 1 },{ 3, 3 } };
 
+vector<complex<double> > apsk12_4 =
+{ { 0.7071067812, 0.7071067812 },
+{ -0.7071067812, 0.7071067812 },
+{ -0.7071067812, -0.7071067812 },
+{ 0.7071067812, -0.7071067812 },
+{ 2.511407148, 0.6729295173 },
+{ 1.838477631, 1.838477631 },
+{ 0.6729295173, 2.511407148 },
+{ -0.6729295173, 2.511407148 },
+{ -1.838477631, 1.838477631 },
+{ -2.511407148, 0.6729295173 },
+{ -2.511407148, -0.6729295172 },
+{ -1.838477631, -1.838477631 },
+{ -0.6729295173, -2.511407148 },
+{ 0.6729295173, -2.511407148 },
+{ 1.838477631, -1.838477631 },
+{ 2.511407148, -0.6729295173 } };
+
 //
 //
 //vector<complex<double> > qam16_4 =
@@ -54,6 +72,42 @@ vector<complex<double> > opt16 =
 { -0.388, -0.329 },{ 0.245, -0.552 },
 { -0.272, -1.001 },{ 0.376, -1.215 },
 { -1.136, 0.571 },{ 0.512, 1.211 } };
+
+vector<complex<double> > hex16 =
+{ {-1.183215957, 0},
+{ -0.5070925528, 0 },
+{ 0.1690308509, 0 },
+{ 0.8451542547, 0 },
+{ -0.8451542547, -0.5855400438 },
+{ -0.1690308509, -0.5855400438 },
+{ 0.5070925528, -0.5855400438 },
+{ 1.183215957, -0.5855400438 },
+{ -0.8451542547, 0.5855400438 },
+{ -0.1690308509, 0.5855400438 },
+{ 0.5070925528, 0.5855400438 },
+{ 1.183215957, 0.5855400438 },
+{ -0.5070925528, 1.171080088 },
+{ 0.1690308509, 1.171080088 },
+{ -0.5070925528, -1.171080088 },
+{ 0.1690308509, -1.171080088 } };
+
+vector<complex<double> > circle16 =
+{ {0.000000000000000000000000000000, -0.783335257075577578989352063067},
+{ -0.416424118540487841572566999821,  -0.663479523780077891110760966724 },
+{ 0.416424118540487841572566999821,  -0.663479523780077891110760966724 },
+{ -0.705416674059201028176189884850,  -0.340589842680189381976367195063 },
+{ 0.705416674059201028176189884850,  -0.340589842680189381976367195063 },
+{ -0.216664742924422421010647936933,  -0.278940013248970164633197783693 },
+{ 0.216664742924422421010647936933,  -0.278940013248970164633197783693 },
+{ -0.778541931420337049205105404241,   0.086525059941917500142787551612 },
+{ 0.778541931420337049205105404241,   0.086525059941917500142787551612 },
+{ -0.347827782219485848085061235425,   0.134062045376535804555624718135 },
+{ 0.347827782219485848085061235425,   0.134062045376535804555624718135 },
+{ 0.000000000000000000000000000000,   0.392500195080286289189873104776 },
+{ -0.613422546404355735310803524023,   0.487162092675997572917936613924 },
+{ 0.613422546404355735310803524023,   0.487162092675997572917936613924 },
+{ -0.260587343786171975082805234959,   0.738720759987242156057605439640 },
+{ 0.260587343786171975082805234959,   0.738720759987242156057605439640 }};
 
 double avgPower(const vector<complex<double> >& Constellation)
 {
@@ -150,9 +204,28 @@ vector<complex<double> > GenerateRandomConstellation(unsigned ConstellationSize)
 
 vector<complex<double> > GenerateNoisyConstellation(unsigned ConstellationSize, unsigned Ind)
 {
-	if (Ind % 10 >= 2)
+	if (Ind % 10 >= 5)
 		return GenerateRandomConstellation(ConstellationSize);
-	vector<complex<double> > res = (Ind % 2 == 0) ? qam16 : opt16;
+	vector<complex<double> > res;
+	switch (Ind % 5) {
+	case 0:
+		res = opt16;
+		break;
+	case 1:
+		res = hex16;
+		break;
+	case 2:
+		res = circle16;
+		break;
+	case 3:
+		res = apsk12_4;
+		break;
+	case 4:
+		res = qam16;
+		break;
+	default:
+		res = opt16;
+	}
 
 	for (auto&& elem : res)
 	{
@@ -276,8 +349,11 @@ int main(int argc, char** argv)
 {
 	signal(SIGINT, handler);
 	Normalize(qam16);
-	//Normalize(qam16_4);
 	Normalize(opt16);
+	Normalize(hex16);
+	Normalize(circle16);
+	Normalize(apsk12_4);
+
 	int population = stoi(argv[1]);
 	float CR = stof(argv[2]);
 	float F = stof(argv[3]);
@@ -294,7 +370,10 @@ int main(int argc, char** argv)
 	gen.seed(seed);
 
 	cout << "QAM16: " << CapacityApprox(qam16, TARGET_SIGMA, NUM_OF_ITERATIONS)
-		<< ", OptimalConstellation: " << CapacityApprox(opt16, TARGET_SIGMA, NUM_OF_ITERATIONS) << endl;
+		<< ", HEX16: " << CapacityApprox(hex16, TARGET_SIGMA, NUM_OF_ITERATIONS)
+		<< ","<<endl<<" Circle16: " << CapacityApprox(circle16, TARGET_SIGMA, NUM_OF_ITERATIONS)
+		<< ", APSK12_4: " << CapacityApprox(apsk12_4, TARGET_SIGMA, NUM_OF_ITERATIONS)
+		<< ", Paper Opt: " << CapacityApprox(opt16, TARGET_SIGMA, NUM_OF_ITERATIONS) << endl;
 	auto&& BestConstellation = DEConstellationSearch(CONSTELLATION_SIZE, mode == "best",
 		population, CR, F, 10000);
 
