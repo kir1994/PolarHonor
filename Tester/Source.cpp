@@ -4,6 +4,7 @@
 #include <vector>
 #include <random>
 #include <ctime>
+#include <algorithm>
 
 using namespace std;
 
@@ -14,6 +15,18 @@ const double TARGET_CAPACITY = 3.6;
 const unsigned NUM_OF_ITERATIONS = 100000;
 const double EPS = 1e-4;
 const unsigned CONSTELLATION_SIZE = 16;
+
+double avgPower(const vector<complex<double> >& Constellation)
+{
+	double res = 0;
+
+	for (auto elem : Constellation)
+		res += pow(abs(elem), 2) / Constellation.size();
+
+	return res;
+}
+
+
 
 double CapacityApprox(const vector<complex<double> >& Constellation, double Sigma, unsigned NumOfIterations)
 {
@@ -82,9 +95,13 @@ void main(int argc, char ** argv)
 	else
 	{
 		vector < complex < double > > Constellation(CONSTELLATION_SIZE);
-
 		for (auto&& elem : Constellation)
 			ifs >> elem._Val[0] >> elem._Val[1];
+		cout << "Power: " << avgPower(Constellation) << endl;
+		double m = 100.;
+		for (auto&& elem : Constellation)
+			m = min(m, abs(elem));
+		cout << "Min abs: " << m << endl;
 		cout << FindSNR(Constellation);
 	}
 }
