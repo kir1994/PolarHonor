@@ -242,7 +242,7 @@ vector<complex<double> > GenerateNoisyConstellation(unsigned ConstellationSize, 
 		elem.real(elem.real() + constNoise(gen));
 		elem.imag(elem.imag() + constNoise(gen));
 	}
-	Normalize(res);
+	Normalize(res, MOVE_POINT);
 	return res;
 }
 
@@ -326,7 +326,7 @@ vector<complex<double> > DEConstellationSearch(
 					}
 				}
 			}
-			Normalize(tempConstellation);
+			Normalize(tempConstellation, MOVE_POINT);
 			double tempMetric = CapacityApprox(tempConstellation, TARGET_SIGMA, NUM_OF_ITERATIONS);
 
 			if (tempMetric > population[k].first)
