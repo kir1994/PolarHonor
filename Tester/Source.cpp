@@ -28,7 +28,7 @@ void PrintStat(const vector < complex < double > >& Constellation)
 void main(int argc, char ** argv)
 {
 	ifstream ifs(argv[1]);
-	double eps = 0.01;
+	double eps = 0.0001;
 	string mode = "";
 	if (argc > 2)
 	{
@@ -62,12 +62,12 @@ void main(int argc, char ** argv)
 
 		if (mode == "--dumppoint")
 			PrintConstellation(tmpConst);
-
+/*
 		cout << endl << "\nMove constellation with eps " << eps << ": \n";
 		tmpConst = Constellation;
 		Normalize(tmpConst, MOVE_CONSTELLATION, eps);
 		PrintStat(tmpConst);
 		if (mode == "--dumpconst")
-			PrintConstellation(tmpConst);
+			PrintConstellation(tmpConst);*/
 	}
 }

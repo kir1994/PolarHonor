@@ -29,7 +29,7 @@ extern vector<double> noiseTable;
 extern vector<unsigned> uniformTable;
 
 enum handle_bad_points { DO_NOTHING, MOVE_POINT, MOVE_CONSTELLATION };
-void Normalize(vector<complex<double> >& Constellation, handle_bad_points mode = DO_NOTHING, double eps = 0.01);
+void Normalize(vector<complex<double> >& Constellation, handle_bad_points mode = DO_NOTHING, double eps = 0.0001);
 
 double avgPower(const vector<complex<double> >& Constellation);
 double CapacityApprox(const vector<complex<double> >& Constellation, double Sigma, unsigned NumOfIterations);
@@ -39,6 +39,8 @@ vector<complex<double> > DEConstellationSearch(
 	unsigned ConstellationSize, bool UseBest,
 	unsigned PopulationSize, double CrossoverProbability, double AmplificationFactor,
 	unsigned NumOfGenerations);
+vector<complex<double> > dlibMinSearch(unsigned ConstellationSize, unsigned ind, unsigned mode);
+
 
 void PrintConstellation(const vector<complex<double> >& Constellation);
 

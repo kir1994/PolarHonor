@@ -92,6 +92,44 @@ vector<complex<double> > circle16 =
 { -0.260587343786171975082805234959,   0.738720759987242156057605439640 },
 { 0.260587343786171975082805234959,   0.738720759987242156057605439640 } };
 
+vector<complex<double>> best16 = 
+{
+	//{1.09896, 0.037321},
+	//{0.452398, 0.352669},
+	//{-0.00661386, -0.0270365},
+	//{0.494073, -0.327028},
+	//{-0.888201, 0.626786},
+	//{-0.420981, 1.18249 },
+	//{-1.267, 0.0119445},
+	//{1.0594, -0.722883},
+	//{-0.187539, 0.537765},
+	//{1.00226, 0.769401},
+	//{-0.577684, -0.0240435},
+	//{-0.357813, -1.22469},
+	//{-0.174103, -0.573824},
+	//{0.382023, -1.05776},
+	//{-0.914229, -0.689248},
+	//{0.314747, 1.0886}
+	{ 1.09896, 0.037321},
+	{0.452398, 0.352669},
+	{-0.00661386, -0.0270365},
+	{0.494073, -0.327028},
+	{-0.888201, 0.626786},
+	{-0.420981, 1.18249},
+	{-1.267, 0.0119445},
+	{1.0594, -0.722883},
+	{-0.187539, 0.537765},
+	{1.00226, 0.769401},
+	{-0.577684, -0.0240435},
+	{-0.357813, -1.22469},
+	{-0.174103, -0.573824},
+	{0.382023, -1.05776},
+	{-0.914229, -0.689248},
+	{0.314747, 1.0886}
+};
+
+
+
 double avgPower(const vector<complex<double> >& Constellation)
 {
 	double res = 0;
@@ -163,6 +201,8 @@ double FindSNR(const vector<complex<double> >& Constellation)
 
 void Normalize(vector<complex<double> >& Constellation, handle_bad_points mode, double eps)
 {
+	if (mode != DO_NOTHING)
+		Normalize(Constellation, DO_NOTHING);
 	vector<complex<double> >::iterator curMin = Constellation.begin();
 	double m = HUGE_VAL;
 	for (auto&& elem = Constellation.begin(); elem != Constellation.end(); ++elem)
@@ -214,10 +254,10 @@ vector<complex<double> > GenerateRandomConstellation(unsigned ConstellationSize)
 
 vector<complex<double> > GenerateNoisyConstellation(unsigned ConstellationSize, unsigned Ind)
 {
-	if (Ind % 10 >= 5)
+	if (Ind % 10 >= 6)
 		return GenerateRandomConstellation(ConstellationSize);
 	vector<complex<double> > res;
-	switch (Ind % 5) {
+	switch (Ind % 6) {
 	case 0:
 		res = opt16;
 		break;
@@ -232,6 +272,9 @@ vector<complex<double> > GenerateNoisyConstellation(unsigned ConstellationSize, 
 		break;
 	case 4:
 		res = qam16;
+		break;
+	case 5:
+		res = best16;
 		break;
 	default:
 		res = opt16;
@@ -355,3 +398,101 @@ void PrintConstellation(const vector<complex<double> >& Constellation)
 		cout << elem.real() << ' ' << elem.imag() << ' ';
 	cout << endl;
 }
+
+
+#include <dlib/optimization.h>
+//using namespace dlib;
+
+typedef dlib::matrix<double, 0, 1> column_vector;
+
+
+double CapacityApproxDlib(const column_vector& constellation)
+{
+	vector<complex<double>> Constellation(CONSTELLATION_SIZE);
+	for (unsigned i = 0; i < CONSTELLATION_SIZE; ++i)
+		Constellation[i] = { constellation(2 * i), constellation(2 * i + 1)};
+	Normalize(Constellation, MOVE_POINT);
+
+	double globalSum = 0;
+	double N0 = 2 * TARGET_SIGMA * TARGET_SIGMA;
+
+	for (unsigned i = 0; i < NUM_OF_ITERATIONS; ++i)
+	{
+		int elem = uniformTable[i];
+		complex<double> noise = { noiseTable[i << 1],  noiseTable[(i << 1) + 1] };
+		complex<double> transmitted = Constellation[elem] +noise;
+
+		double sum = 0;
+		double an = abs(noise);
+		an *= an;
+
+		for (unsigned j = 0; j < CONSTELLATION_SIZE; ++j)
+		{
+			double c = abs(transmitted - Constellation[j]);
+			c *= c;
+			probs[j] = exp((an - c) / N0);
+			sum += probs[j];
+		}
+		for (unsigned j = 0; j < CONSTELLATION_SIZE; ++j)
+			probs[j] /= sum;
+
+		double mutualInf = 0.;
+
+		for (unsigned j = 0; j < Constellation.size(); ++j)
+			if (probs[j] != 0)
+				mutualInf += probs[j] * log2(probs[j]);
+		globalSum += mutualInf;
+	}
+
+	return -(globalSum / NUM_OF_ITERATIONS + log2(Constellation.size()));
+}
+
+
+vector<complex<double> > dlibMinSearch(unsigned ConstellationSize, unsigned ind, unsigned mode)
+{
+	auto tmp = GenerateNoisyConstellation(ConstellationSize, ind);
+		//GenerateRandomConstellation(ConstellationSize);
+	column_vector starting_point(ConstellationSize * 2);
+	for(unsigned i = 0; i < ConstellationSize; ++i)
+	{
+		starting_point(2 * i) = tmp[i].real();
+		starting_point(2 * i + 1) = tmp[i].imag();
+	}
+
+	column_vector zero_vector(ConstellationSize * 2);
+	for (unsigned i = 0; i < ConstellationSize * 2; ++i)
+		zero_vector(i) = -2;
+	column_vector mega_vector(ConstellationSize * 2);
+	for (unsigned i = 0; i < ConstellationSize * 2; ++i)
+		mega_vector(i) = 2.;
+	
+	switch(mode)
+	{
+	case 0:
+		dlib::find_min_using_approximate_derivatives(dlib::bfgs_search_strategy(),
+			dlib::objective_delta_stop_strategy(1e-7).be_verbose(),
+			CapacityApproxDlib,
+			starting_point, -10);
+		break;
+	case 1:
+		dlib::find_min_using_approximate_derivatives(dlib::lbfgs_search_strategy(100),
+			dlib::objective_delta_stop_strategy(1e-7).be_verbose(),
+			CapacityApproxDlib,
+			starting_point, -10);
+		break;
+	case 2:
+		dlib::find_min_using_approximate_derivatives(dlib::cg_search_strategy(),
+			dlib::objective_delta_stop_strategy(1e-7).be_verbose(),
+			CapacityApproxDlib,
+			starting_point, -10);
+		break;
+	default:
+		break;
+	}
+
+	for (unsigned i = 0; i < ConstellationSize; ++i)
+		tmp[i] = { starting_point(2 * i), starting_point(2 * i + 1) };
+
+	return tmp;
+}
+

@@ -43,8 +43,8 @@ int main(int argc, char** argv)
 		<< ","<<endl<<" Circle16: " << CapacityApprox(circle16, TARGET_SIGMA, NUM_OF_ITERATIONS)
 		<< ", APSK12_4: " << CapacityApprox(apsk12_4, TARGET_SIGMA, NUM_OF_ITERATIONS)
 		<< ", Paper Opt: " << CapacityApprox(opt16, TARGET_SIGMA, NUM_OF_ITERATIONS) << endl;
-	auto&& BestConstellation = DEConstellationSearch(CONSTELLATION_SIZE, mode == "best",
-		population, CR, F, 10000);
+	auto&& BestConstellation = (mode != "dlib") ? DEConstellationSearch(CONSTELLATION_SIZE, mode == "best",
+		population, CR, F, 10000) : dlibMinSearch(CONSTELLATION_SIZE, int(CR), int(F));
 
 	double bestCapacity = CapacityApprox(BestConstellation, TARGET_SIGMA, NUM_OF_ITERATIONS);
 	cout << bestCapacity;
