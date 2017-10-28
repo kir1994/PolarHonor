@@ -19,9 +19,9 @@ void PrintStat(const vector < complex < double > >& Constellation)
 		m = min(m, abs(elem));
 	cout << "Min abs: ";
 	cerr << m << "\t";
-	cout << endl << "Capacity at 12dB: ";
+	cout << endl << "Capacity at " << TARGET_SNR << "dB: ";
 	cerr << CapacityApprox(Constellation, TARGET_SIGMA, NUM_OF_ITERATIONS) << "\t";
-	cout << endl << "SNR for 3.6 bits/symbol: ";
+	cout << endl << "SNR for " << TARGET_CAPACITY << " bits/symbol: ";
 	cerr << FindSNR(Constellation);
 }
 

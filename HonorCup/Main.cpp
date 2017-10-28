@@ -17,11 +17,6 @@ uniform_int_distribution<int> distr(0., CONSTELLATION_SIZE - 1);
 int main(int argc, char** argv)
 {
 	signal(SIGINT, handler);
-	Normalize(qam16);
-	Normalize(opt16);
-	Normalize(hex16);
-	Normalize(circle16);
-	Normalize(apsk12_4);
 
 	int population = stoi(argv[1]);
 	float CR = stof(argv[2]);
@@ -37,14 +32,14 @@ int main(int argc, char** argv)
 	}
 	unsigned seed = time(nullptr);
 	gen.seed(seed);
-
-	cout << "QAM16: " << CapacityApprox(qam16, TARGET_SIGMA, NUM_OF_ITERATIONS)
-		<< ", HEX16: " << CapacityApprox(hex16, TARGET_SIGMA, NUM_OF_ITERATIONS)
+	Normalize(qam64);
+	cout << "QAM64: " << CapacityApprox(qam64, TARGET_SIGMA, NUM_OF_ITERATIONS) << endl;
+		/*<< ", HEX16: " << CapacityApprox(hex16, TARGET_SIGMA, NUM_OF_ITERATIONS)
 		<< ","<<endl<<" Circle16: " << CapacityApprox(circle16, TARGET_SIGMA, NUM_OF_ITERATIONS)
 		<< ", APSK12_4: " << CapacityApprox(apsk12_4, TARGET_SIGMA, NUM_OF_ITERATIONS)
-		<< ", Paper Opt: " << CapacityApprox(opt16, TARGET_SIGMA, NUM_OF_ITERATIONS) << endl;
-	auto&& BestConstellation = (mode != "dlib") ? DEConstellationSearch(CONSTELLATION_SIZE, mode == "best",
-		population, CR, F, 10000) : dlibMinSearch(CONSTELLATION_SIZE, int(CR), int(F));
+		<< ", Paper Opt: " << CapacityApprox(opt16, TARGET_SIGMA, NUM_OF_ITERATIONS) << endl*/;
+	auto&& BestConstellation = /*(mode != "dlib") ? */DEConstellationSearch(CONSTELLATION_SIZE, mode == "best",
+		population, CR, F, 10000) /*: dlibMinSearch(CONSTELLATION_SIZE, int(CR), int(F))*/;
 
 	double bestCapacity = CapacityApprox(BestConstellation, TARGET_SIGMA, NUM_OF_ITERATIONS);
 	cout << bestCapacity;
